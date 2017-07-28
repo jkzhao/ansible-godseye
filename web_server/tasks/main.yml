@@ -1,0 +1,19 @@
+- name: install dependency package
+  yum: name={{ item }} state=present
+  with_items:
+  - openssl-devel
+  - readline-devel
+  - pcre-devel
+  - gcc
+- name: copy nginx
+  copy: src=openresty-for-godseye-1.9.7.3-1.x86_64.rpm dest=/tmp/
+- name: install nginx
+  yum: name=/tmp/openresty-for-godseye-1.9.7.3-1.x86_64.rpm state=present
+- name: install configuration file for nginx
+  template: src=nginx.conf.j2 dest=/usr/local/openresty/nginx/conf/nginx.conf
+- name: crontab task
+  cron: name="clear nginx logs" weekday="0" hour="0" minute="0" job="/usr/local/openresty/clrnginxlog.sh"
+- name: start nginx
+  shell: systemctl start nginx.service
+  tags:
+  - start

@@ -1,0 +1,31 @@
+- name: copy and unzip flume
+  unarchive: src=apache-hive-2.1.0-bin.tar.gz dest=/usr/local/
+# environment variables.
+- name: set hive env
+  lineinfile: dest={{env_file}} insertafter="{{item.position}}" line="{{item.value}}" state=present
+  with_items:
+  - {position: EOF, value: "\n"}
+  - {position: EOF, value: "# Hive environment"}
+  - {position: EOF, value: "export HIVE_HOME=/usr/local/apache-hive-2.1.0-bin"}
+  - {position: EOF, value: "export PATH=$HIVE_HOME/bin:$PATH"}
+- name: enforce env
+  shell: source {{env_file}}
+# hive metadata store in mysql, visit mysql need mysql-connector-java-5.1.38.jar
+- name: copy mysql-connector-java-5.1.38.jar into HIVE_HOME/lib
+  copy: src=mysql-connector-java-5.1.38.jar dest=/usr/local/apache-hive-2.1.0-bin/lib/
+# configuration file.
+- name: install configuration file hive-env.sh.j2 for hive
+  template: src=hive-env.sh.j2 dest=/usr/local/apache-hive-2.1.0-bin/conf/hive-env.sh
+- name: install configuration file hive-site.xml.j2 for hive
+  template: src=hive-site.xml.j2 dest=/usr/local/apache-hive-2.1.0-bin/conf/hive-site.xml
+# start hive, you need create database for hive in mysql database, and create user for hive to visit this database.
+# mysql> create database hive default charset utf8;
+# mysql> grant all on hive.* to hive@localhost identified by 'wisedu';
+# mysql> grant all on hive.* to hive@'%.%.%.%' identified by 'wisedu';
+# mysql> flush privileges;
+- name: init hive metadata
+  shell: /usr/local/apache-hive-2.1.0-bin/bin/schematool -initSchema -dbType mysql
+- name: start hive
+  shell: /usr/local/apache-hive-2.1.0-bin/bin/hive --service hiveserver2 &
+  tags:
+  - start

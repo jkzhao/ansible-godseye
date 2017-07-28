@@ -1,0 +1,14 @@
+- name: install zookeeper
+  unarchive: src=zookeeper-3.4.6.tar.gz dest=/usr/local/
+- name: install configuration file for zookeeper
+  template: src=zoo.cfg.j2 dest=/usr/local/zookeeper-3.4.6/conf/zoo.cfg
+- name: add myid file
+  shell: echo {{ myid }} > /usr/local/zookeeper-3.4.6/dataDir/myid
+- name: copy script to clear zookeeper logs.
+  copy: src=clean_zklog.sh dest=/usr/local/zookeeper-3.4.6/clean_zklog.sh mode=755
+- name: crontab task
+  cron: name="clear zk logs" weekday="0" hour="0" minute="0" job="/usr/local/zookeeper-3.4.6/clean_zklog.sh"
+- name: start zookeeper
+  shell: /usr/local/zookeeper-3.4.6/bin/zkServer.sh start
+  tags:
+  - start

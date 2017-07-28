@@ -1,0 +1,13 @@
+- name: mkdir necessary catalog
+  file: path=/usr/java state=directory mode=0755
+- name: copy and unzip jdk
+  unarchive: src={{jdk_package_name}} dest=/usr/java/
+- name: set env
+  lineinfile: dest={{env_file}} insertafter="{{item.position}}" line="{{item.value}}" state=present
+  with_items:
+  - {position: EOF, value: "\n"}
+  - {position: EOF, value: "export JAVA_HOME=/usr/java/{{jdk_version}}"}
+  - {position: EOF, value: "export PATH=$JAVA_HOME/bin:$PATH"}
+  - {position: EOF, value: "export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"}
+- name: enforce env
+  shell: source {{env_file}}

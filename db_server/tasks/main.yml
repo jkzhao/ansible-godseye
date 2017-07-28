@@ -1,0 +1,21 @@
+- name: install dependency package
+  yum: name={{ item }} state=present
+  with_items:
+  - libaio
+  - libaio-devel
+- name: copy mysql rpm
+  copy: src=mysql-5.6.27-1.x86_64.rpm dest=/tmp/
+- name: install mysql
+  yum: name=/tmp/mysql-5.6.27-1.x86_64.rpm state=present
+- name: start mysql
+  shell: /etc/init.d/mysqld start
+  tags:
+  - start
+- name: set up root password
+  shell: /usr/local/mysql/bin/mysql -uroot -e "UPDATE mysql.user SET Password=PASSWORD('wisedu123') where USER='root'" &>/dev/null
+- name: delete anonymous account1
+  shell: /usr/local/mysql/bin/mysql -uroot -Dmysql -pwisedu123 -e "DROP USER ''@localhost" &>/dev/null
+- name: delete anonymous account2
+  shell: /usr/local/mysql/bin/mysql -uroot -Dmysql -pwisedu123 -e "grant all on *.* to root@'%.%.%.%' identified by 'wisedu123'" &>/dev/null
+- name: flush privileges
+  shell: /usr/local/mysql/bin/mysql -uroot -Dmysql -pwisedu123 -e "flush privileges" &>/dev/null

@@ -1,0 +1,30 @@
+- name: copy and unzip scala
+  unarchive: src=scala-2.10.6.tgz dest=/usr/local/
+- name: set scala env
+  lineinfile: dest={{env_file}} insertafter="{{item.position}}" line="{{item.value}}" state=present
+  with_items:
+  - {position: EOF, value: "\n"}
+  - {position: EOF, value: "# Scala environment"}
+  - {position: EOF, value: "export SCALA_HOME=/usr/local/scala-2.10.6"}
+  - {position: EOF, value: "export PATH=$SCALA_HOME/bin:$PATH"}
+- name: copy and unzip spark
+  unarchive: src=spark-1.6.1-bin-hadoop2.6.tgz dest=/usr/local/
+- name: rename spark directory
+  command: mv /usr/local/spark-1.6.1-bin-hadoop2.6 /usr/local/spark-1.6.1
+- name: set spark env
+  lineinfile: dest={{env_file}} insertafter="{{item.position}}" line="{{item.value}}" state=present
+  with_items:
+  - {position: EOF, value: "\n"}
+  - {position: EOF, value: "# Spark environment"}
+  - {position: EOF, value: "export SPARK_HOME=/usr/local/spark-1.6.1"}
+  - {position: EOF, value: "export PATH=$SPARK_HOME/bin:$PATH"}
+- name: enforce env
+  shell: source {{env_file}}
+- name: install configuration file for spark
+  template: src=slaves.j2 dest=/usr/local/spark-1.6.1/conf/slaves
+- name: install configuration file for spark
+  template: src=spark-env.sh.j2 dest=/usr/local/spark-1.6.1/conf/spark-env.sh
+- name: start spark cluster
+  shell: /usr/local/spark-1.6.1/sbin/start-all.sh
+  tags:
+  - start

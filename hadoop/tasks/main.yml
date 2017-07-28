@@ -1,0 +1,111 @@
+- name: install dependency package
+  yum: name={{ item }} state=present
+  with_items:
+  - openssh
+  - rsync
+- name: create hadoop user
+  user: name=hadoop password={{password}}
+  vars:
+    # created with:
+    # python -c 'import crypt; print crypt.crypt("This is my Password", "$1$SomeSalt$")'
+    # >>> import crypt
+    # >>> crypt.crypt('wisedu123', '$1$bigrandomsalt$')
+    # '$1$bigrando$wzfZ2ifoHJPvaMuAelsBq0'
+    password: $1$bigrando$wzfZ2ifoHJPvaMuAelsBq0
+- name: copy and unzip hadoop
+  #unarchive module owner and group only effect on directory.
+  unarchive: src=hadoop-2.7.2.tar.gz dest=/usr/local/
+- name: create hadoop soft link
+  file: src=/usr/local/hadoop-2.7.2 dest=/usr/local/hadoop state=link
+- name: create hadoop logs directory
+  file: dest=/usr/local/hadoop/logs mode=0775 state=directory
+- name: change hadoop soft link owner and group
+  #recurse=yes make all files in a directory changed.
+  file: path=/usr/local/hadoop owner=hadoop group=hadoop recurse=yes
+- name: change hadoop-2.7.2 directory owner and group
+  #recurse=yes make all files in a directory changed.
+  file: path=/usr/local/hadoop-2.7.2 owner=hadoop group=hadoop recurse=yes
+- name: set hadoop env
+  lineinfile: dest={{env_file}} insertafter="{{item.position}}" line="{{item.value}}" state=present
+  with_items:
+  - {position: EOF, value: "\n"}
+  - {position: EOF, value: "# Hadoop environment"}
+  - {position: EOF, value: "export HADOOP_HOME=/usr/local/hadoop"}
+  - {position: EOF, value: "export PATH=$PATH:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin"}
+- name: enforce env
+  shell: source {{env_file}}
+- name: install configuration file hadoop-env.sh.j2 for hadoop
+  template: src=hadoop-env.sh.j2 dest=/usr/local/hadoop/etc/hadoop/hadoop-env.sh owner=hadoop group=hadoop
+- name: install configuration file core-site.xml.j2 for hadoop
+  template: src=core-site.xml.j2 dest=/usr/local/hadoop/etc/hadoop/core-site.xml owner=hadoop group=hadoop
+- name: install configuration file hdfs-site.xml.j2 for hadoop
+  template: src=hdfs-site.xml.j2 dest=/usr/local/hadoop/etc/hadoop/hdfs-site.xml owner=hadoop group=hadoop
+- name: install configuration file mapred-site.xml.j2 for hadoop
+  template: src=mapred-site.xml.j2 dest=/usr/local/hadoop/etc/hadoop/mapred-site.xml owner=hadoop group=hadoop
+- name: install configuration file yarn-site.xml.j2 for hadoop
+  template: src=yarn-site.xml.j2 dest=/usr/local/hadoop/etc/hadoop/yarn-site.xml owner=hadoop group=hadoop
+- name: install configuration file slaves.j2 for hadoop
+  template: src=slaves.j2 dest=/usr/local/hadoop/etc/hadoop/slaves owner=hadoop group=hadoop
+- name: install configuration file hadoop-daemon.sh.j2 for hadoop
+  template: src=hadoop-daemon.sh.j2 dest=/usr/local/hadoop/sbin/hadoop-daemon.sh owner=hadoop group=hadoop
+- name: install configuration file yarn-daemon.sh.j2 for hadoop
+  template: src=yarn-daemon.sh.j2 dest=/usr/local/hadoop/sbin/yarn-daemon.sh owner=hadoop group=hadoop
+# make sure zookeeper started, and then start hadoop.
+# start journalnode
+- name: start journalnode
+  shell: /usr/local/hadoop/sbin/hadoop-daemon.sh start journalnode
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: datanode == "true"
+# format namenode
+- name: format active namenode hdfs
+  shell: /usr/local/hadoop/bin/hdfs namenode -format
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+- name: start active namenode hdfs
+  shell: /usr/local/hadoop/sbin/hadoop-daemon.sh start namenode
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+- name: format standby namenode hdfs
+  shell: /usr/local/hadoop/bin/hdfs namenode -bootstrapStandby
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_standby == "true"
+- name: stop active namenode hdfs
+  shell: /usr/local/hadoop/sbin/hadoop-daemon.sh stop namenode
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+# format ZKFC
+- name: format ZKFC
+  shell: /usr/local/hadoop/bin/hdfs zkfc -formatZK
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+# start hadoop cluster
+- name: start namenode
+  shell: /usr/local/hadoop/sbin/start-dfs.sh
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+- name: start yarn
+  shell: /usr/local/hadoop/sbin/start-yarn.sh
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_active == "true"
+- name: start standby rm
+  shell: /usr/local/hadoop/sbin/yarn-daemon.sh start resourcemanager
+  become: true
+  become_method: su
+  become_user: hadoop
+  when: namenode_standby == "true" 

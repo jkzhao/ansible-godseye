@@ -1,0 +1,23 @@
+- name: copy and unzip kafka
+  unarchive: src=kafka_2.11-0.9.0.1.tgz dest=/usr/local/
+- name: install configuration file for kafka
+  template: src=server.properties.j2 dest=/usr/local/kafka_2.11-0.9.0.1/config/server.properties
+- name: copy script to clear kafka logs.
+  copy: src=clean_kafkalog.sh dest=/usr/local/kafka_2.11-0.9.0.1/clean_kafkalog.sh mode=755
+- name: crontab task
+  cron: name="clear kafka logs" weekday="0" hour="0" minute="0" job="/usr/local/kafka_2.11-0.9.0.1/clean_kafkalog.sh"
+- name: start kafka
+  shell: JMX_PORT=9997 /usr/local/kafka_2.11-0.9.0.1/bin/kafka-server-start.sh -daemon /usr/local/kafka_2.11-0.9.0.1/config/server.properties &
+  tags:
+  - start
+- name: copy and unizp kafka-manager
+  unarchive: src=kafka-manager-1.3.0.6.zip dest=/usr/local/
+  when: ansible_default_ipv4['address'] == "{{kafka_manager_ip}}"
+- name: install configuration file for kafka-manager
+  template: src=application.conf.j2 dest=/usr/local/kafka-manager-1.3.0.6/conf/application.conf
+  when: ansible_default_ipv4['address'] == "{{kafka_manager_ip}}"
+- name: start kafka-manager
+  shell: nohup /usr/local/kafka-manager-1.3.0.6/bin/kafka-manager &
+  when: ansible_default_ipv4['address'] == "{{kafka_manager_ip}}"
+  tags:
+  - kafkaManagerStart

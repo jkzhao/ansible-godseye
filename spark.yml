@@ -1,0 +1,4 @@
+- hosts: spark
+  remote_user: root
+  roles:
+ - spark

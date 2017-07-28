@@ -1,0 +1,3 @@
+jdk_package_name: jdk-8u73-linux-x64.gz
+env_file: /etc/profile
+jdk_version: jdk1.8.0_73 

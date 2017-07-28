@@ -1,0 +1,3 @@
+ES_MEM: 500M
+cluster_name: wisedu
+master_ip: 172.16.7.151

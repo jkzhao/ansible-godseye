@@ -1,0 +1,18 @@
+env_file: /etc/profile
+# hadoop-env.sh.j2 file variables.
+JAVA_HOME: /usr/java/jdk1.8.0_73
+# core-site.xml.j2 file variables.
+ZK_NODE1: node1:2181
+ZK_NODE2: node2:2181
+ZK_NODE3: node3:2181
+# hdfs-site.xml.j2 file variables.
+NAMENODE1_HOSTNAME: node1
+NAMENODE2_HOSTNAME: node2
+DATANODE1_HOSTNAME:
+DATANODE2_HOSTNAME:
+DATANODE3_HOSTNAME:
+# mapred-site.xml.j2 file variables.
+MR_MODE: yarn
+# yarn-site.xml.j2 file variables.
+RM1_HOSTNAME: 
+RM2_HOSTNAME: 

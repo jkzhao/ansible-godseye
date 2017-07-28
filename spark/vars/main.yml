@@ -1,0 +1,12 @@
+env_file: /etc/profile
+# spark-env.sh.j2 file variables
+JAVA_HOME: /usr/java/jdk1.8.0_73
+SCALA_HOME: /usr/local/scala-2.10.6
+SPARK_MASTER_HOSTNAME: node1
+SPARK_HOME: /usr/local/spark-1.6.1
+SPARK_WORKER_MEMORY: 256M
+HIVE_HOME: /usr/local/apache-hive-2.1.0-bin
+HADOOP_CONF_DIR: /usr/local/hadoop/etc/hadoop/
+# slave.j2 file variables
+SLAVE1_HOSTNAME: node2
+SLAVE2_HOSTNAME: node3

@@ -1,0 +1,14 @@
+- name: install dependency package
+  yum: name={{ item }} state=present
+  with_items:
+  - openssl-devel
+  - readline-devel
+  - pcre-devel
+- name: copy redis
+  copy: src=redis-3.2.2-1.x86_64.rpm dest=/tmp/
+- name: install redis
+  yum: name=/tmp/redis-3.2.2-1.x86_64.rpm state=present
+- name: start redis
+  shell: /usr/local/bin/redis-server /etc/redis.conf
+  tags:
+  - start

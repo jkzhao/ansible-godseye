@@ -1,0 +1,234 @@
+
+#user  nobody;
+worker_processes  1;
+
+error_log  logs/error.log  debug;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    #access_log  logs/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+            listen  80;
+            server_name localhost;
+            location /status {   
+                stub_status;
+                access_log off;
+                allow 172.16.7.118;
+                deny all;
+            }
+    }
+
+    upstream elasticsearch_servers {
+	    {{ elasticsearch_cluster }}
+    }
+
+    server {
+            listen  8090;
+	    access_log logs/es_access.log main;
+
+            location = /* {   
+		deny all;
+            }
+
+            location / {   
+		proxy_pass http://elasticsearch_servers;
+            }
+
+
+    }
+
+    
+    log_format tick “$time_local^A$remote_addr^A$http_user_agent^A$u_idsite^A$u_rec^A$u_url^A$u_action_name^A$u__visitorid^A$u_urlref^A$u__idvc^A$u__viewts^A$u__idts^A$u_res^A$u_h^A$u_m^A$u_s^A$u_cookie^A$u_send_image^A$u_fla^A$u_java^A$u_dir^A$u_realp^A$u_pdf^A$u_wma^A$u_gears^A$u_ag^A$u_uid^A$u_cvar”;
+    lua_package_path '/usr/local/openresty/lualib/lua-resty-kafka/lib/?.lua;/usr/local/openresty/lualib/godseye/?.lua;';
+    
+    server {
+            listen	8888;
+            server_name localhost;
+            charset utf-8;
+            root   /usr/local/godseye/godseye.wisedu.com;
+
+            location /godseye.gif {
+                #伪装成gif文件
+                default_type image/gif;
+                #本身关闭access_log，通过subrequest记录log
+                access_log off;
+                access_by_lua "
+                    ngx.location.capture('/jstrackerlog?' .. ngx.var.args)
+                ";
+                #此请求不缓存
+                add_header Expires "Fri, 01 Jan 1980 00:00:00 GMT";
+                add_header Pragma "no-cache";
+                add_header Cache-Control "no-cache, max-age=0, must-revalidate";
+                #返回一个1×1的空gif图片
+                empty_gif;
+            }
+
+            location /jstrackerlog {
+                #内部location，不允许外部直接访问
+                internal;
+			
+                #设置变量，注意需要unescape
+                set_unescape_uri $u_idsite $arg_idsite;
+                set_unescape_uri $u_rec $arg_rec;
+                set_unescape_uri $u_url $arg_url;
+                set_unescape_uri $u_action_name $arg_action_name;
+                #原始变量名为_id,但因为该名称为elasticsearch的build-in 关键字,
+                #因此在构建索引时产生了冲突,所以,将其重命名为_visitorid
+                set_unescape_uri $u__visitorid $arg__id;
+                set_unescape_uri $u_urlref $arg_urlref;
+                set_unescape_uri $u__idvc $arg__idvc;
+                set_unescape_uri $u__viewts $arg__viewts;
+                set_unescape_uri $u__idts $arg__idts;
+                set_unescape_uri $u_res $arg_res;
+                set_unescape_uri $u_h $arg_h;
+                set_unescape_uri $u_m $arg_m;
+                set_unescape_uri $u_s $arg_s;
+                set_unescape_uri $u_cookie $arg_cookie;
+                set_unescape_uri $u_send_image $arg_send_image;
+                set_unescape_uri $u_fla $arg_fla;
+                set_unescape_uri $u_java $arg_java;
+                set_unescape_uri $u_dir $arg_dir;
+                set_unescape_uri $u_realp $arg_realp;
+                set_unescape_uri $u_pdf $arg_pdf;
+                set_unescape_uri $u_wma $arg_wma;
+                set_unescape_uri $u_gears $arg_gears;
+                set_unescape_uri $u_ag $arg_ag;
+                set_unescape_uri $u_uid $arg_uid;
+				#
+				set_unescape_uri $u_cvar $arg_cvar;
+
+
+                #测试lua-resty-kafka
+                content_by_lua '
+                    local cjson = require "cjson"
+                    local client = require "resty.kafka.client"
+                    local producer = require "resty.kafka.producer"
+                    local luaKafkaProducer = require "luaKafkaProducer"
+
+                    --依据kafka真实的broker地址填写
+                    local broker_list = {
+			{ host = "{{ kafka_server1 }}", port = 9092 },
+			{ host = "{{ kafka_server2 }}", port = 9092 },
+			{ host = "{{ kafka_server3 }}", port = 9092 },
+                    }
+
+                    local msgFormat = "%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s^A%s"
+                 
+                    local key = ngx.var.msec
+
+                    local logEvent = {}
+                    logEvent.headers = {}
+                
+                    logEvent.headers.type = ngx.var.u_idsite
+                    logEvent.headers.host = "127.0.0.1"
+                    logEvent.headers.templateType="frontend"
+					
+					local cstr=ngx.var.u_cvar
+					local obj = cjson.decode(cstr)
+				
+				  
+				  
+					groupId=0
+					appId=0
+					hostId=0
+					itemId=0
+					 
+					 
+					for k,v in pairs(obj) do
+						
+						if k == "1" then  
+						  groupId=v[2]
+						 
+						elseif k =="2" then		
+						  appId=v[2]
+						elseif k =="3" then	
+						   hostId=v[2]
+						elseif k =="4" then	
+						   itemId=v[2]
+						end
+					end
+				
+					logEvent.headers.groupId=groupId
+					logEvent.headers.appId=appId
+					logEvent.headers.hostId=hostId
+					logEvent.headers.itemId=itemId
+					
+					local topic="frontend"
+					
+				
+
+                    local logStr = string.format(msgFormat,
+						                         ngx.now()*1000,
+                                                 ngx.var.remote_addr,
+                                                 ngx.var.http_user_agent,
+                                                 ngx.var.u_idsite,
+                                                 ngx.var.u_rec,
+                                                 ngx.var.u_url,
+                                                 ngx.var.u_action_name,
+                                                 ngx.var.u__visitorid,
+                                                 ngx.var.u_urlref,
+                                                 ngx.var.u__idvc,
+                                                 ngx.var.u__viewts,
+                                                 ngx.var.u__idts,
+                                                 ngx.var.u_res,
+                                                 ngx.var.u_h,
+                                                 ngx.var.u_m,
+                                                 ngx.var.u_s,
+                                                 ngx.var.u_cookie,
+                                                 ngx.var.u_send_image,
+                                                 ngx.var.u_fla,
+                                                 ngx.var.u_java,
+                                                 ngx.var.u_dir,
+                                                 ngx.var.u_realp,
+                                                 ngx.var.u_pdf,
+                                                 ngx.var.u_wma,
+                                                 ngx.var.u_gears,
+                                                 ngx.var.u_ag,
+                                                 ngx.var.u_uid);
+
+                    logEvent.body = logStr
+
+                    local logEventStr = cjson.encode(logEvent)
+
+                    --luaKafkaProducer.sync_produce(client, broker_list, producer, topic, key, logEventStr);
+
+                    luaKafkaProducer.async_produce(client, broker_list, producer, topic, key, logEventStr);
+                ';
+
+                #打开日志
+                log_subrequest on;
+                #godseye.log，实际应用中最好加buffer，格式为tick
+                #仅供测试使用,生产环境请勿打开!!!
+                access_log /usr/local/openresty/nginx/logs/godseye.log tick;
+                #输出空字符串
+                #echo '';
+            }
+    }
+
+
+}

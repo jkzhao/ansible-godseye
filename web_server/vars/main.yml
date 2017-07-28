@@ -1,0 +1,4 @@
+elasticsearch_cluster: server 172.16.206.17:9200;server 172.16.206.31:9200;server 172.16.206.32:9200;
+kafka_server1: 172.16.206.17
+kafka_server2: 172.16.206.31
+kafka_server3: 172.16.206.32

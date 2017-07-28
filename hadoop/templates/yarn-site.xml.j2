@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<configuration>
+	<!-- 开启RM高可用 -->
+	<property>
+	   <name>yarn.resourcemanager.ha.enabled</name>
+	   <value>true</value>
+	</property>
+	<!-- 指定RM的cluster id -->
+	<property>
+	   <name>yarn.resourcemanager.cluster-id</name>
+	   <value>yrc</value>
+	</property>
+	<!-- 指定RM的名字 -->
+	<property>
+	   <name>yarn.resourcemanager.ha.rm-ids</name>
+	   <value>rm1,rm2</value>
+	</property>
+	<!-- 分别指定RM的地址 -->
+	<property>
+	   <name>yarn.resourcemanager.hostname.rm1</name>
+	   <value>{{RM1_HOSTNAME}}</value>
+	</property>
+	<property>
+	   <name>yarn.resourcemanager.hostname.rm2</name>
+	   <value>{{RM2_HOSTNAME}}</value>
+	</property>
+	<!-- 指定zk集群地址 -->
+	<property>
+	   <name>yarn.resourcemanager.zk-address</name>
+	   <value>{{ZK_NODE1}},{{ZK_NODE2}},{{ZK_NODE3}}</value>
+	</property>
+	<property>
+	   <name>yarn.nodemanager.aux-services</name>
+	   <value>mapreduce_shuffle</value>
+	</property>
+</configuration>

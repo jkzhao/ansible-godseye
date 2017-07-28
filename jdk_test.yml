@@ -1,0 +1,4 @@
+- hosts: 172.16.7.153
+  remote_user: root
+  roles:
+  - jdk7
